@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Профориентатор</title>
+<style>
+  :root { --bg:#0b0f14; --card:#141b24; --accent:#2563eb; --text:#e5e7eb; --muted:#94a3b8; }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; font-family:system-ui,sans-serif;
+    background:var(--bg); color:var(--text);
+    display:flex; justify-content:center; padding:24px 16px;
+    min-height:100vh; position:relative; overflow-x:hidden;
+  }
+  #six-bg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+  #six-bg span {
+    position:absolute; color:#1e293b; font-weight:800;
+    font-family:monospace; animation:float 12s linear infinite; user-select:none;
+  }
+  @keyframes float {
+    0%,100% { transform:translateY(0) rotate(0deg); }
+    50% { transform:translateY(-30px) rotate(8deg); }
+  }
+  .app { width:100%; max-width:560px; position:relative; z-index:1; }
+  .sub { color:var(--muted); margin:0 0 24px; font-size:.95rem; }
+  .card {
+    background:var(--card); border-radius:16px; padding:24px;
+    box-shadow:0 10px 40px rgba(0,0,0,.45); border:1px solid #1f2937;
+  }
+  #startCard { text-align:center; padding:40px 24px; }
+  #startCard h1 {
+    font-size:1.8rem; margin:0 0 12px;
+    background:linear-gradient(90deg,#60a5fa,#a78bfa);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #startCard p { color:var(--muted); margin:0 0 28px; }
+  .start-btn {
+    padding:16px 40px; border:none; border-radius:14px;
+    background:var(--accent); color:#fff; font-size:1.1rem; font-weight:700;
+    cursor:pointer; transition:.15s; box-shadow:0 0 24px rgba(37,99,235,.5);
+  }
+  .start-btn:hover { transform:translateY(-2px); box-shadow:0 0 32px rgba(37,99,235,.8); }
+  .progress { height:8px; background:#1f2937; border-radius:8px; margin-bottom:20px; overflow:hidden; }
+  .progress > div { height:100%; background:var(--accent); width:0; transition:width .3s; }
+  .q-num { font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .q-text { font-size:1.15rem; font-weight:600; margin:8px 0 20px; }
+  .answers { display:flex; flex-direction:column; gap:10px; }
+  button.ans {
+    text-align:left; padding:14px 16px; border:2px solid #1f2937; background:#0f1720;
+    border-radius:12px; font-size:1rem; cursor:pointer; transition:.15s; color:var(--text);
+  }
+  button.ans:hover { border-color:var(--accent); background:#132033; }
+  .result h2 { margin:0 0 8px; }
+  .job {
+    display:flex; gap:12px; align-items:center; padding:14px;
+    border-radius:12px; background:#0f1720; margin-bottom:10px; border:1px solid #1f2937;
+  }
+  .job .num {
+    width:32px; height:32px; flex-shrink:0; border-radius:50%;
+    background:var(--accent); color:#fff; display:grid; place-items:center; font-weight:700;
+  }
+  .job b { display:block; }
+  .job small { color:var(--muted); }
+  .restart {
+    margin-top:16px; width:100%; padding:14px; border:none; border-radius:12px;
+    background:var(--accent); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+  }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="six-bg"></div>
+
+<div class="app">
+  <div class="card" id="startCard">
+    <h1>Кем стать?</h1>
+    <p>Ответь на 10 вопросов — узнай 3 подходящие профессии</p>
+    <button class="start-btn" id="startBtn">Начать</button>
+  </div>
+
+  <div class="card hidden" id="quizCard">
+    <div class="progress"><div id="bar"></div></div>
+    <div class="q-num" id="qNum"></div>
+    <div class="q-text" id="qText"></div>
+    <div class="answers" id="answers"></div>
+  </div>
+
+  <div class="card result hidden" id="resultCard">
+    <h2>Твои профессии 🎯</h2>
+    <p class="sub" id="resultSub"></p>
+    <div id="jobs"></div>
+    <button class="restart" id="restartBtn">Пройти заново</button>
+  </div>
+</div>
+<script>
+// Фон с шестёрками
+(function () {
+  var bg = document.getElementById("six-bg");
+  for (var i = 0; i < 40; i++) {
+    var s = document.createElement("span");
+    s.textContent = "6";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    s.style.fontSize = (14 + Math.random() * 60) + "px";
+    s.style.animationDuration = (8 + Math.random() * 12) + "s";
+    s.style.animationDelay = (-Math.random() * 12) + "s";
+    s.style.opacity = (0.15 + Math.random() * 0.5).toFixed(2);
+    bg.appendChild(s);
+  }
+})();
+
+var questions = [
+  { q: "Что тебе интереснее делать в свободное время?", a: [
+    { t: "Разбираться в гаджетах и программах", c: "tech" },
+    { t: "Рисовать, снимать видео, писать", c: "art" },
+    { t: "Помогать друзьям с их проблемами", c: "people" },
+    { t: "Гулять, наблюдать за природой", c: "nature" }
+  ]},
+  { q: "Какой школьный предмет нравится больше?", a: [
+    { t: "Информатика и математика", c: "tech" },
+    { t: "Биология и химия", c: "med" },
+    { t: "Литература и история", c: "art" },
+    { t: "Физкультура", c: "sport" }
+  ]},
+  { q: "Какая работа тебе ближе?", a: [
+    { t: "С людьми: общаться, помогать", c: "people" },
+    { t: "С техникой и кодом", c: "tech" },
+    { t: "С цифрами и таблицами", c: "data" },
+    { t: "Творческая, без жёстких рамок", c: "art" }
+  ]},
+  { q: "Что для тебя важно в будущей работе?", a: [
+    { t: "Стабильность и порядок", c: "order" },
+    { t: "Высокий доход", c: "data" },
+    { t: "Польза людям", c: "med" },
+    { t: "Свобода и творчество", c: "art" }
+  ]},
+  { q: "Как ты решаешь сложную задачу?", a: [
+    { t: "Ломаю на части и анализирую", c: "data" },
+    { t: "Ищу нестандартную идею", c: "art" },
+    { t: "Спрашиваю совета у других", c: "people" },
+    { t: "Пробую на практике, экспериментирую", c: "tech" }
+  ]},
+  { q: "Какая атмосфера на работе тебе по душе?", a: [
+    { t: "Тихая, с концентрацией", c: "data" },
+    { t: "Живая, с людьми", c: "people" },
+    { t: "На свежем воздухе / в движении", c: "nature" },
+    { t: "Чёткая, по инструкции", c: "order" }
+  ]},
+  { q: "Что бы ты выбрал(а) на выходные?", a: [
+    { t: "Поход или выезд на природу", c: "nature" },
+    { t: "Спортзал или активные игры", c: "sport" },
+    { t: "Новый сериал или выставка", c: "art" },
+    { t: "Собрать что-то своими руками", c: "tech" }
+  ]},
+  { q: "Твоя суперсила — это...", a: [
+    { t: "Внимательность к деталям", c: "order" },
+    { t: "Эмпатия и умение слушать", c: "people" },
+    { t: "Логика и счёт", c: "data" },
+    { t: "Забота о здоровье и теле", c: "med" }
+  ]},
+  { q: "Что тебе интереснее изучать самостоятельно?", a: [
+    { t: "Как устроены технологии и ИИ", c: "tech" },
+    { t: "Как работает человеческий организм", c: "med" },
+    { t: "Как устроены животные и экосистемы", c: "nature" },
+    { t: "Как организовывать процессы и порядок", c: "order" }
+  ]},
+  { q: "Кем бы ты хотел(а) работать в будущем больше всего?", a: [
+    { t: "Создавать технологии и программы", c: "tech" },
+    { t: "Помогать людям со здоровьем", c: "med" },
+    { t: "Тренировать тело и вести спорт", c: "sport" },
+    { t: "Работать с людьми и обучать", c: "people" }
+  ]}
+];
+
+var professions = [
+  { name: "Программист", cat: "tech", desc: "Создаёт сайты, приложения и игры" },
+  { name: "Инженер-робототехник", cat: "tech", desc: "Собирает и программирует роботов" },
+  { name: "Врач", cat: "med", desc: "Лечит людей, ставит диагнозы" },
+  { name: "Медсестра / фельдшер", cat: "med", desc: "Помогает пациентам каждый день" },
+  { name: "Дизайнер", cat: "art", desc: "Придумывает визуал: сайты, логотипы, интерьеры" },
+  { name: "Видеомейкер / блогер", cat: "art", desc: "Создаёт контент и истории" },
+  { name: "Эколог", cat: "nature", desc: "Изучает и защищает природу" },
+{ name: "Ветеринар", cat: "nature", desc: "Лечит животных" },
+  { name: "Психолог", cat: "people", desc: "Помогает людям разобраться в себе" },
+  { name: "Учитель", cat: "people", desc: "Обучает и вдохновляет" },
+  { name: "Аналитик данных", cat: "data", desc: "Находит закономерности в цифрах" },
+  { name: "Бухгалтер / экономист", cat: "data", desc: "Работает с финансами и отчётами" },
+  { name: "Спортивный тренер", cat: "sport", desc: "Тренирует и мотивирует" },
+  { name: "Логист", cat: "order", desc: "Организует доставку и процессы" },
+  { name: "Администратор", cat: "order", desc: "Наводит порядок и управляет процессами" }
+];
+
+var current = 0;
+var scores = { tech:0, med:0, art:0, nature:0, people:0, data:0, sport:0, order:0 };
+
+function startQuiz() {
+  document.getElementById("startCard").classList.add("hidden");
+  document.getElementById("quizCard").classList.remove("hidden");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  var q = questions[current];
+  document.getElementById("qNum").textContent = "Вопрос " + (current + 1) + " из " + questions.length;
+  document.getElementById("qText").textContent = q.q;
+  document.getElementById("bar").style.width = ((current / questions.length) * 100) + "%";
+
+  var box = document.getElementById("answers");
+  box.innerHTML = "";
+  q.a.forEach(function (ans) {
+    var b = document.createElement("button");
+    b.className = "ans";
+    b.textContent = ans.t;
+    b.onclick = function () {
+      scores[ans.c]++;
+      current++;
+      if (current < questions.length) renderQuestion();
+      else showResult();
+    };
+    box.appendChild(b);
+  });
+}
+
+function showResult() {
+  document.getElementById("bar").style.width = "100%";
+  document.getElementById("quizCard").classList.add("hidden");
+  document.getElementById("resultCard").classList.remove("hidden");
+
+  var sortedCats = Object.keys(scores).sort(function (a, b) {
+    return scores[b] - scores[a];
+  });
+  var picked = [];
+  for (var i = 0; i < sortedCats.length; i++) {
+    var cat = sortedCats[i];
+    for (var j = 0; j < professions.length; j++) {
+      var p = professions[j];
+      if (p.cat === cat && picked.indexOf(p) === -1) picked.push(p);
+      if (picked.length >= 3) break;
+    }
+    if (picked.length >= 3) break;
+  }
+  for (var k = 0; k < professions.length; k++) {
+    if (picked.length >= 3) break;
+    if (picked.indexOf(professions[k]) === -1) picked.push(professions[k]);
+  }
+
+  document.getElementById("resultSub").textContent = "На основе твоих ответов лучше всего подходят:";
+  var html = "";
+  for (var m = 0; m < picked.length; m++) {
+    html += '<div class="job"><div class="num">' + (m + 1) + '</div><div><b>' +
+      picked[m].name + '</b><small>' + picked[m].desc + '</small></div></div>';
+  }
+  document.getElementById("jobs").innerHTML = html;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById("startBtn").addEventListener("click", startQuiz);
+  document.getElementById("restartBtn").addEventListener("click", function () { location.reload(); });
+});
+</script>
+</body>
+</html>
